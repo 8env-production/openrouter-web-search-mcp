@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as openrouterClient from '../services/openrouterClient.js';
 import {
+  registerWebSearchTool,
   WEB_SEARCH_TOOL_NAME,
   webSearchInputSchema,
   webSearchMetadata,
-  registerWebSearchTool,
 } from './webSearch.js';
-import * as openrouterClient from '../services/openrouterClient.js';
 
 vi.mock('../services/openrouterClient.js');
 
@@ -30,7 +30,6 @@ describe('webSearch tool', () => {
     it('должен валидировать полный input со всеми параметрами', () => {
       const input = {
         query: 'test query',
-        apiKey: 'test-key',
         httpProxy: 'http://proxy:3128',
         httpsProxy: 'https://proxy:3128',
         model: 'custom-model',
@@ -58,7 +57,7 @@ describe('webSearch tool', () => {
     });
 
     it('должен отклонять пустые строки для опциональных параметров', () => {
-      const input = { query: 'test', apiKey: '' };
+      const input = { query: 'test', model: '' };
       expect(() => webSearchInputSchema.parse(input)).toThrow();
     });
 
@@ -96,7 +95,6 @@ describe('webSearch tool', () => {
     it('должен принимать все опциональные параметры как undefined', () => {
       const input = {
         query: 'test',
-        apiKey: undefined,
         httpProxy: undefined,
         httpsProxy: undefined,
         model: undefined,
@@ -191,7 +189,6 @@ describe('webSearch tool', () => {
       const handler = mockServer.registerTool.mock.calls[0][2];
       const fullInput = {
         query: 'test query',
-        apiKey: 'key',
         model: 'model',
         timeoutMs: 5000,
       };

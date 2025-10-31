@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
-import { requestOpenRouter } from './openrouterClient.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as openrouterConfig from '../config/openrouter.js';
+import { requestOpenRouter } from './openrouterClient.js';
 
 vi.mock('axios');
 vi.mock('../config/openrouter.js', async () => {
@@ -67,7 +67,6 @@ describe('openrouterClient', () => {
     it('должен передавать overrides в createPayload и createRequestConfig', async () => {
       const input = {
         query: 'test query',
-        apiKey: 'custom-key',
         model: 'custom-model',
         timeoutMs: 30000,
       };
@@ -85,18 +84,12 @@ describe('openrouterClient', () => {
       await requestOpenRouter(input);
 
       const expectedOverrides = {
-        apiKey: 'custom-key',
         model: 'custom-model',
         timeoutMs: 30000,
       };
 
-      expect(openrouterConfig.createPayload).toHaveBeenCalledWith(
-        'test query',
-        expectedOverrides
-      );
-      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith(
-        expectedOverrides
-      );
+      expect(openrouterConfig.createPayload).toHaveBeenCalledWith('test query', expectedOverrides);
+      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith(expectedOverrides);
     });
 
     it('должен возвращать "No response" если нет choices', async () => {
@@ -173,7 +166,6 @@ describe('openrouterClient', () => {
     it('должен передавать все параметры кроме query в overrides', async () => {
       const input = {
         query: 'test query',
-        apiKey: 'key',
         httpProxy: 'http://proxy',
         httpsProxy: 'https://proxy',
         model: 'model',
@@ -196,13 +188,8 @@ describe('openrouterClient', () => {
 
       const { query, ...expectedOverrides } = input;
 
-      expect(openrouterConfig.createPayload).toHaveBeenCalledWith(
-        query,
-        expectedOverrides
-      );
-      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith(
-        expectedOverrides
-      );
+      expect(openrouterConfig.createPayload).toHaveBeenCalledWith(query, expectedOverrides);
+      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith(expectedOverrides);
     });
   });
 });

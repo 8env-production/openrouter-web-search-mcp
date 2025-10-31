@@ -19,7 +19,7 @@
    ```bash
    docker run -d \
      -p 60125:80 \
-     -e HTTP_PROXY="http://5.129.238.212:5559" \
+     -e HTTP_PROXY="http://proxy.example:5559" \
      --restart=always \
      --name openrouter-web-search-mcp \
      openrouter-web-search:latest
@@ -33,15 +33,15 @@
 
    Ожидаемый ответ: `{"status":"ok"}`
 
-4. Настройте MCP клиент для подключения к SSE серверу:
+4. Настройте MCP клиент для подключения к SSE серверу с передачей API key через заголовок Authorization:
 
    ```jsonc
    {
      "mcpServers": {
        "web-search": {
          "url": "http://localhost:60125/mcp",
-         "env": {
-           "OPENROUTER_API_KEY": "sk-or-v1-***"
+         "headers": {
+           "Authorization": "Bearer sk-or-v1-***"
          }
        }
      }
@@ -59,12 +59,13 @@
 2. Запустите сервер:
 
    ```bash
-   OPENROUTER_API_KEY="sk-or-v1-***" \
    HTTP_PROXY="http://proxy.example:3128" \
    node src/index.js
    ```
 
 3. Сервер будет доступен по адресу `http://localhost:80/mcp`
+
+   **Важно:** API key должен передаваться в заголовке Authorization при каждом запросе.
 
 ### Тестирование
 
@@ -95,27 +96,41 @@
 - `POST /mcp` - Endpoint для отправки сообщений
 - `GET /health` - Health check endpoint
 
-## Переменные окружения (используются по умолчанию)
+## Переменные окружения
 
 | Переменная                   | Назначение                               |
 | ---------------------------- | ---------------------------------------- |
-| `OPENROUTER_API_KEY`         | API-ключ OpenRouter                      |
 | `HTTP_PROXY` / `HTTPS_PROXY` | Прокси для исходящих HTTP/HTTPS запросов |
+
+## Аутентификация
+
+API ключ OpenRouter **обязательно** передается в заголовке `Authorization` при каждом запросе:
+
+```
+Authorization: Bearer sk-or-v1-***
+```
+
+или
+
+```
+Authorization: sk-or-v1-***
+```
+
+Без заголовка Authorization запрос будет отклонен с ошибкой 401.
 
 ## Параметры инструмента `web_search`
 
 Все поля, кроме `query`, необязательны. Если параметр не указан, используется значение из переменных окружения или дефолт (см. ниже).
 
-| Поле           | Тип    | По умолчанию                | Описание                                    |
-| -------------- | ------ | --------------------------- | ------------------------------------------- |
-| `query`        | string | — (обязательное)            | Запрос пользователя                         |
-| `apiKey`       | string | `OPENROUTER_API_KEY`        | API-ключ OpenRouter для конкретного запроса |
-| `httpProxy`    | string | `HTTP_PROXY`                | Прокси для HTTP                             |
-| `httpsProxy`   | string | `HTTPS_PROXY`               | Прокси для HTTPS                            |
-| `model`        | string | `openai/gpt-4o-mini:online` | Модель OpenRouter                           |
-| `pluginId`     | string | `web`                       | Плагин OpenRouter                           |
-| `timeoutMs`    | number | `60000`                     | Таймаут запроса в миллисекундах             |
-| `maxRedirects` | number | `5`                         | Максимальное число редиректов               |
+| Поле           | Тип    | По умолчанию                | Описание                          |
+| -------------- | ------ | --------------------------- | --------------------------------- |
+| `query`        | string | — (обязательное)            | Запрос пользователя               |
+| `httpProxy`    | string | `HTTP_PROXY`                | Прокси для HTTP                   |
+| `httpsProxy`   | string | `HTTPS_PROXY`               | Прокси для HTTPS                  |
+| `model`        | string | `openai/gpt-4o-mini:online` | Модель OpenRouter                 |
+| `pluginId`     | string | `web`                       | Плагин OpenRouter                 |
+| `timeoutMs`    | number | `60000`                     | Таймаут запроса в миллисекундах   |
+| `maxRedirects` | number | `5`                         | Максимальное число редиректов     |
 
 ### Пример вызова инструмента
 
@@ -124,12 +139,12 @@
   "name": "web_search",
   "arguments": {
     "query": "latest news about Model Context Protocol",
-    "apiKey": "sk-or-v1-***",
     "httpsProxy": "http://proxy.example:3128",
     "timeoutMs": 30000
   }
 }
 ```
 
-При отсутствии `apiKey` и/или прокси в аргументах, будут использованы переменные окружения.  
-Если ни в аргументах, ни в окружении не найден `OPENROUTER_API_KEY`, будет выброшена ошибка.
+**Важно:** API ключ OpenRouter передается через заголовок `Authorization`, а не как параметр инструмента.
+
+При отсутствии прокси в аргументах, будут использованы переменные окружения `HTTP_PROXY` / `HTTPS_PROXY`.

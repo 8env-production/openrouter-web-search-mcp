@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SERVER_CONFIG } from './server.js';
 
 describe('server config', () => {
@@ -16,7 +16,7 @@ describe('server config', () => {
     it('должен содержать только необходимые поля', () => {
       const expectedKeys = ['name', 'version'];
       const actualKeys = Object.keys(SERVER_CONFIG);
-      
+
       expect(actualKeys).toEqual(expectedKeys);
     });
 

@@ -1,8 +1,9 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { SERVER_CONFIG } from "./config/server.js";
-import { registerWebSearchTool } from "./tools/webSearch.js";
-import express from "express";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import express from 'express';
+import { SERVER_CONFIG } from './config/server.js';
+import { runWithApiKey } from './context/requestContext.js';
+import { registerWebSearchTool } from './tools/webSearch.js';
 
 const PORT = process.env.PORT || 80;
 
@@ -18,24 +19,39 @@ async function startServer() {
   app.use(express.json());
 
   // Health check endpoint
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
   });
 
   // MCP endpoint
-  app.post("/mcp", async (req, res) => {
+  app.post('/mcp', async (req, res) => {
+    // Извлекаем API key из заголовка Authorization
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing Authorization header' });
+    }
+
+    const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Invalid Authorization header format' });
+    }
+
     // Create a new transport for each request to prevent request ID collisions
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
 
-    res.on("close", () => {
+    res.on('close', () => {
       transport.close();
     });
 
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    // Выполняем MCP handler в контексте с API key
+    await runWithApiKey(apiKey, async () => {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    });
   });
 
   // Start the server
@@ -45,13 +61,13 @@ async function startServer() {
       console.log(`Endpoint: http://localhost:${PORT}/mcp`);
       console.log(`Health check: http://localhost:${PORT}/health`);
     })
-    .on("error", (error) => {
-      console.error("Server error:", error);
+    .on('error', (error) => {
+      console.error('Server error:', error);
       process.exit(1);
     });
 }
 
 startServer().catch((error) => {
-  console.error("Failed to start MCP server:", error);
+  console.error('Failed to start MCP server:', error);
   process.exitCode = 1;
 });

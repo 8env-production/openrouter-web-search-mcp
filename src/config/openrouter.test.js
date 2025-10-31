@@ -1,13 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as requestContext from '../context/requestContext.js';
 import {
-  OPENROUTER_API_URL,
-  DEFAULT_MODEL,
-  DEFAULT_PLUGIN_ID,
-  REQUEST_TIMEOUT_MS,
-  MAX_REDIRECTS,
   createPayload,
   createRequestConfig,
+  DEFAULT_MODEL,
+  DEFAULT_PLUGIN_ID,
+  MAX_REDIRECTS,
+  OPENROUTER_API_URL,
+  REQUEST_TIMEOUT_MS,
 } from './openrouter.js';
+
+vi.mock('../context/requestContext.js');
 
 describe('openrouter config', () => {
   const originalEnv = process.env;
@@ -15,6 +18,7 @@ describe('openrouter config', () => {
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -63,7 +67,7 @@ describe('openrouter config', () => {
 
   describe('createRequestConfig', () => {
     it('должен создавать конфиг с дефолтными значениями', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       const config = createRequestConfig({});
 
       expect(config.headers).toHaveProperty('Content-Type', 'application/json');
@@ -72,23 +76,22 @@ describe('openrouter config', () => {
       expect(config.maxRedirects).toBe(MAX_REDIRECTS);
     });
 
-    it('должен использовать переданный apiKey', () => {
-      const apiKey = 'custom-api-key';
-      const config = createRequestConfig({ apiKey });
+    it('должен использовать API key из контекста', () => {
+      const apiKey = 'context-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue(apiKey);
+      const config = createRequestConfig({});
 
       expect(config.headers.Authorization).toBe(`Bearer ${apiKey}`);
     });
 
-    it('должен выбрасывать ошибку если нет API ключа', () => {
-      delete process.env.OPENROUTER_API_KEY;
+    it('должен выбрасывать ошибку если нет API ключа в контексте', () => {
+      requestContext.getApiKeyFromContext.mockReturnValue(undefined);
 
-      expect(() => createRequestConfig({})).toThrow(
-        'Missing OPENROUTER_API_KEY'
-      );
+      expect(() => createRequestConfig({})).toThrow('Missing OPENROUTER_API_KEY');
     });
 
     it('должен использовать кастомный timeout', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       const timeoutMs = 30000;
       const config = createRequestConfig({ timeoutMs });
 
@@ -96,7 +99,7 @@ describe('openrouter config', () => {
     });
 
     it('должен использовать кастомный maxRedirects', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       const maxRedirects = 10;
       const config = createRequestConfig({ maxRedirects });
 
@@ -104,7 +107,7 @@ describe('openrouter config', () => {
     });
 
     it('должен настраивать HTTPS прокси для HTTPS URL', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       const httpsProxy = 'http://proxy.example:3128';
       const config = createRequestConfig({ httpsProxy });
 
@@ -113,7 +116,7 @@ describe('openrouter config', () => {
     });
 
     it('должен использовать HTTP_PROXY из env', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       process.env.HTTP_PROXY = 'http://proxy.example:3128';
       const config = createRequestConfig({});
 
@@ -122,7 +125,7 @@ describe('openrouter config', () => {
     });
 
     it('должен использовать HTTPS_PROXY из env', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       process.env.HTTPS_PROXY = 'https://proxy.example:3128';
       const config = createRequestConfig({});
 
@@ -131,7 +134,7 @@ describe('openrouter config', () => {
     });
 
     it('должен приоритизировать переданный прокси над env', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       process.env.HTTPS_PROXY = 'https://env-proxy.example:3128';
       const httpsProxy = 'http://param-proxy.example:3128';
       const config = createRequestConfig({ httpsProxy });
@@ -140,15 +143,8 @@ describe('openrouter config', () => {
       expect(config.proxy).toBe(false);
     });
 
-    it('должен игнорировать пустые строки для apiKey', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
-      const config = createRequestConfig({ apiKey: '   ' });
-
-      expect(config.headers.Authorization).toBe('Bearer test-api-key');
-    });
-
     it('должен игнорировать пустые строки для прокси', () => {
-      process.env.OPENROUTER_API_KEY = 'test-api-key';
+      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
       const config = createRequestConfig({ httpsProxy: '   ' });
 
       expect(config.httpsAgent).toBeUndefined();
