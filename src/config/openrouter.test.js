@@ -27,6 +27,7 @@ describe('openrouter config', () => {
 
   describe('createPayload', () => {
     it('должен создавать payload с дефолтными значениями', () => {
+      requestContext.getModelFromContext.mockReturnValue(undefined);
       const query = 'test query';
       const payload = createPayload(query);
 
@@ -37,38 +38,33 @@ describe('openrouter config', () => {
       });
     });
 
-    it('должен использовать кастомную модель', () => {
+    it('должен использовать модель из контекста', () => {
       const query = 'test query';
       const model = 'openai/gpt-4';
-      const payload = createPayload(query, { model });
+      requestContext.getModelFromContext.mockReturnValue(model);
+      const payload = createPayload(query);
 
       expect(payload.model).toBe(model);
     });
 
-    it('должен использовать кастомный pluginId', () => {
+    it('должен игнорировать пустые строки для model из контекста', () => {
+      requestContext.getModelFromContext.mockReturnValue('   ');
       const query = 'test query';
-      const pluginId = 'custom-plugin';
-      const payload = createPayload(query, { pluginId });
+      const payload = createPayload(query);
 
-      expect(payload.plugins[0].id).toBe(pluginId);
-    });
-
-    it('должен игнорировать лишние параметры в overrides', () => {
-      const query = 'test query';
-      const payload = createPayload(query, { extraParam: 'value' });
-
-      expect(payload).toEqual({
-        model: DEFAULT_MODEL,
-        messages: [{ role: 'user', content: query }],
-        plugins: [{ id: DEFAULT_PLUGIN_ID }],
-      });
+      expect(payload.model).toBe(DEFAULT_MODEL);
     });
   });
 
   describe('createRequestConfig', () => {
+    beforeEach(() => {
+      requestContext.getHttpProxyFromContext.mockReturnValue(undefined);
+      requestContext.getHttpsProxyFromContext.mockReturnValue(undefined);
+    });
+
     it('должен создавать конфиг с дефолтными значениями', () => {
       requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      const config = createRequestConfig({});
+      const config = createRequestConfig();
 
       expect(config.headers).toHaveProperty('Content-Type', 'application/json');
       expect(config.headers).toHaveProperty('Authorization', 'Bearer test-api-key');
@@ -79,7 +75,7 @@ describe('openrouter config', () => {
     it('должен использовать API key из контекста', () => {
       const apiKey = 'context-api-key';
       requestContext.getApiKeyFromContext.mockReturnValue(apiKey);
-      const config = createRequestConfig({});
+      const config = createRequestConfig();
 
       expect(config.headers.Authorization).toBe(`Bearer ${apiKey}`);
     });
@@ -87,65 +83,22 @@ describe('openrouter config', () => {
     it('должен выбрасывать ошибку если нет API ключа в контексте', () => {
       requestContext.getApiKeyFromContext.mockReturnValue(undefined);
 
-      expect(() => createRequestConfig({})).toThrow('Missing OPENROUTER_API_KEY');
+      expect(() => createRequestConfig()).toThrow('Missing OPENROUTER_API_KEY');
     });
 
-    it('должен использовать кастомный timeout', () => {
+    it('должен настраивать HTTPS прокси для HTTPS URL из контекста', () => {
       requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      const timeoutMs = 30000;
-      const config = createRequestConfig({ timeoutMs });
-
-      expect(config.timeout).toBe(timeoutMs);
-    });
-
-    it('должен использовать кастомный maxRedirects', () => {
-      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      const maxRedirects = 10;
-      const config = createRequestConfig({ maxRedirects });
-
-      expect(config.maxRedirects).toBe(maxRedirects);
-    });
-
-    it('должен настраивать HTTPS прокси для HTTPS URL', () => {
-      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      const httpsProxy = 'http://proxy.example:3128';
-      const config = createRequestConfig({ httpsProxy });
+      requestContext.getHttpsProxyFromContext.mockReturnValue('http://proxy.example:3128');
+      const config = createRequestConfig();
 
       expect(config.httpsAgent).toBeDefined();
       expect(config.proxy).toBe(false);
     });
 
-    it('должен использовать HTTP_PROXY из env', () => {
+    it('должен игнорировать пустые строки для прокси из контекста', () => {
       requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      process.env.HTTP_PROXY = 'http://proxy.example:3128';
-      const config = createRequestConfig({});
-
-      expect(config.httpsAgent).toBeDefined();
-      expect(config.proxy).toBe(false);
-    });
-
-    it('должен использовать HTTPS_PROXY из env', () => {
-      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      process.env.HTTPS_PROXY = 'https://proxy.example:3128';
-      const config = createRequestConfig({});
-
-      expect(config.httpsAgent).toBeDefined();
-      expect(config.proxy).toBe(false);
-    });
-
-    it('должен приоритизировать переданный прокси над env', () => {
-      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      process.env.HTTPS_PROXY = 'https://env-proxy.example:3128';
-      const httpsProxy = 'http://param-proxy.example:3128';
-      const config = createRequestConfig({ httpsProxy });
-
-      expect(config.httpsAgent).toBeDefined();
-      expect(config.proxy).toBe(false);
-    });
-
-    it('должен игнорировать пустые строки для прокси', () => {
-      requestContext.getApiKeyFromContext.mockReturnValue('test-api-key');
-      const config = createRequestConfig({ httpsProxy: '   ' });
+      requestContext.getHttpsProxyFromContext.mockReturnValue('   ');
+      const config = createRequestConfig();
 
       expect(config.httpsAgent).toBeUndefined();
       expect(config.httpAgent).toBeUndefined();

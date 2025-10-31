@@ -27,20 +27,6 @@ describe('webSearch tool', () => {
       expect(result).toEqual(input);
     });
 
-    it('должен валидировать полный input со всеми параметрами', () => {
-      const input = {
-        query: 'test query',
-        httpProxy: 'http://proxy:3128',
-        httpsProxy: 'https://proxy:3128',
-        model: 'custom-model',
-        pluginId: 'custom-plugin',
-        timeoutMs: 30000,
-        maxRedirects: 10,
-      };
-      const result = webSearchInputSchema.parse(input);
-      expect(result).toEqual(input);
-    });
-
     it('должен отклонять пустой query', () => {
       const input = { query: '' };
       expect(() => webSearchInputSchema.parse(input)).toThrow();
@@ -56,54 +42,9 @@ describe('webSearch tool', () => {
       expect(() => webSearchInputSchema.parse(input)).toThrow();
     });
 
-    it('должен отклонять пустые строки для опциональных параметров', () => {
-      const input = { query: 'test', model: '' };
-      expect(() => webSearchInputSchema.parse(input)).toThrow();
-    });
-
-    it('должен отклонять неположительные timeoutMs', () => {
-      const input = { query: 'test', timeoutMs: 0 };
-      expect(() => webSearchInputSchema.parse(input)).toThrow();
-    });
-
-    it('должен отклонять отрицательные maxRedirects', () => {
-      const input = { query: 'test', maxRedirects: -1 };
-      expect(() => webSearchInputSchema.parse(input)).toThrow();
-    });
-
-    it('должен принимать maxRedirects = 0', () => {
-      const input = { query: 'test', maxRedirects: 0 };
-      const result = webSearchInputSchema.parse(input);
-      expect(result.maxRedirects).toBe(0);
-    });
-
-    it('должен отклонять дробные значения timeoutMs', () => {
-      const input = { query: 'test', timeoutMs: 30000.5 };
-      expect(() => webSearchInputSchema.parse(input)).toThrow();
-    });
-
-    it('должен отклонять дробные значения maxRedirects', () => {
-      const input = { query: 'test', maxRedirects: 5.5 };
-      expect(() => webSearchInputSchema.parse(input)).toThrow();
-    });
-
     it('должен отклонять дополнительные поля (strict режим)', () => {
       const input = { query: 'test', extraField: 'value' };
       expect(() => webSearchInputSchema.parse(input)).toThrow();
-    });
-
-    it('должен принимать все опциональные параметры как undefined', () => {
-      const input = {
-        query: 'test',
-        httpProxy: undefined,
-        httpsProxy: undefined,
-        model: undefined,
-        pluginId: undefined,
-        timeoutMs: undefined,
-        maxRedirects: undefined,
-      };
-      const result = webSearchInputSchema.parse(input);
-      expect(result.query).toBe('test');
     });
   });
 
@@ -170,32 +111,6 @@ describe('webSearch tool', () => {
 
       expect(openrouterClient.requestOpenRouter).toHaveBeenCalledWith(validInput);
       expect(result).toEqual(mockResponse);
-    });
-
-    it('зарегистрированный обработчик должен передавать все параметры', async () => {
-      const mockServer = {
-        registerTool: vi.fn(),
-      };
-
-      const mockResponse = {
-        content: [{ type: 'text', text: 'response' }],
-        structuredContent: { result: 'response' },
-      };
-
-      openrouterClient.requestOpenRouter.mockResolvedValue(mockResponse);
-
-      registerWebSearchTool(mockServer);
-
-      const handler = mockServer.registerTool.mock.calls[0][2];
-      const fullInput = {
-        query: 'test query',
-        model: 'model',
-        timeoutMs: 5000,
-      };
-
-      await handler(fullInput);
-
-      expect(openrouterClient.requestOpenRouter).toHaveBeenCalledWith(fullInput);
     });
 
     it('зарегистрированный обработчик должен прокидывать ошибки', async () => {

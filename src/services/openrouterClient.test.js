@@ -43,8 +43,8 @@ describe('openrouterClient', () => {
 
       const result = await requestOpenRouter({ query });
 
-      expect(openrouterConfig.createPayload).toHaveBeenCalledWith(query, {});
-      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith({});
+      expect(openrouterConfig.createPayload).toHaveBeenCalledWith(query);
+      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith();
       expect(axios.post).toHaveBeenCalledWith(
         openrouterConfig.OPENROUTER_API_URL,
         mockPayload,
@@ -62,34 +62,6 @@ describe('openrouterClient', () => {
           result: JSON.stringify(mockResponse.data.choices[0].message),
         },
       });
-    });
-
-    it('должен передавать overrides в createPayload и createRequestConfig', async () => {
-      const input = {
-        query: 'test query',
-        model: 'custom-model',
-        timeoutMs: 30000,
-      };
-
-      const mockResponse = {
-        data: {
-          choices: [{ message: { role: 'assistant', content: 'response' } }],
-        },
-      };
-
-      openrouterConfig.createPayload.mockReturnValue({});
-      openrouterConfig.createRequestConfig.mockReturnValue({});
-      axios.post.mockResolvedValue(mockResponse);
-
-      await requestOpenRouter(input);
-
-      const expectedOverrides = {
-        model: 'custom-model',
-        timeoutMs: 30000,
-      };
-
-      expect(openrouterConfig.createPayload).toHaveBeenCalledWith('test query', expectedOverrides);
-      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith(expectedOverrides);
     });
 
     it('должен возвращать "No response" если нет choices', async () => {
@@ -161,35 +133,6 @@ describe('openrouterClient', () => {
 
       expect(result.content[0].text).toBe(expectedSerialized);
       expect(result.structuredContent.result).toBe(expectedSerialized);
-    });
-
-    it('должен передавать все параметры кроме query в overrides', async () => {
-      const input = {
-        query: 'test query',
-        httpProxy: 'http://proxy',
-        httpsProxy: 'https://proxy',
-        model: 'model',
-        pluginId: 'plugin',
-        timeoutMs: 5000,
-        maxRedirects: 10,
-      };
-
-      const mockResponse = {
-        data: {
-          choices: [{ message: { content: 'test' } }],
-        },
-      };
-
-      openrouterConfig.createPayload.mockReturnValue({});
-      openrouterConfig.createRequestConfig.mockReturnValue({});
-      axios.post.mockResolvedValue(mockResponse);
-
-      await requestOpenRouter(input);
-
-      const { query, ...expectedOverrides } = input;
-
-      expect(openrouterConfig.createPayload).toHaveBeenCalledWith(query, expectedOverrides);
-      expect(openrouterConfig.createRequestConfig).toHaveBeenCalledWith(expectedOverrides);
     });
   });
 });

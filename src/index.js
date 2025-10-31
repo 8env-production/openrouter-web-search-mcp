@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express from 'express';
 import { SERVER_CONFIG } from './config/server.js';
-import { runWithApiKey } from './context/requestContext.js';
+import { runWithRequestContext } from './context/requestContext.js';
 import { registerWebSearchTool } from './tools/webSearch.js';
 
 const PORT = process.env.PORT || 80;
@@ -37,6 +37,11 @@ async function startServer() {
       return res.status(401).json({ error: 'Invalid Authorization header format' });
     }
 
+    // Извлекаем дополнительные параметры из заголовков
+    const httpProxy = req.headers['x-http-proxy'];
+    const httpsProxy = req.headers['x-https-proxy'];
+    const model = req.headers['x-model'];
+
     // Create a new transport for each request to prevent request ID collisions
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -47,11 +52,19 @@ async function startServer() {
       transport.close();
     });
 
-    // Выполняем MCP handler в контексте с API key
-    await runWithApiKey(apiKey, async () => {
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
-    });
+    // Выполняем MCP handler в контексте с параметрами
+    await runWithRequestContext(
+      {
+        openrouterApiKey: apiKey,
+        httpProxy,
+        httpsProxy,
+        model,
+      },
+      async () => {
+        await server.connect(transport);
+        await transport.handleRequest(req, res, req.body);
+      }
+    );
   });
 
   // Start the server

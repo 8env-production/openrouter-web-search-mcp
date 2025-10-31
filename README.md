@@ -19,7 +19,6 @@
    ```bash
    docker run -d \
      -p 60125:80 \
-     -e HTTP_PROXY="http://proxy.example:5559" \
      --restart=always \
      --name openrouter-web-search-mcp \
      openrouter-web-search:latest
@@ -33,7 +32,7 @@
 
    Ожидаемый ответ: `{"status":"ok"}`
 
-4. Настройте MCP клиент для подключения к SSE серверу с передачей API key через заголовок Authorization:
+4. Настройте MCP клиент для подключения к SSE серверу с передачей API key и опциональных параметров через заголовки:
 
    ```jsonc
    {
@@ -41,7 +40,9 @@
        "web-search": {
          "url": "http://localhost:60125/mcp",
          "headers": {
-           "Authorization": "Bearer sk-or-v1-***"
+           "Authorization": "Bearer sk-or-v1-***",
+           "X-Model": "openai/gpt-4o",
+           "X-HTTP-Proxy": "http://proxy.example:3128"
          }
        }
      }
@@ -59,7 +60,6 @@
 2. Запустите сервер:
 
    ```bash
-   HTTP_PROXY="http://proxy.example:3128" \
    node src/index.js
    ```
 
@@ -96,15 +96,11 @@
 - `POST /mcp` - Endpoint для отправки сообщений
 - `GET /health` - Health check endpoint
 
-## Переменные окружения
+## Аутентификация и настройки
 
-| Переменная                   | Назначение                               |
-| ---------------------------- | ---------------------------------------- |
-| `HTTP_PROXY` / `HTTPS_PROXY` | Прокси для исходящих HTTP/HTTPS запросов |
+### Обязательные заголовки
 
-## Аутентификация
-
-API ключ OpenRouter **обязательно** передается в заголовке `Authorization` при каждом запросе:
+API ключ OpenRouter **обязательно** передается в заголовке `Authorization` при подключении к MCP серверу:
 
 ```
 Authorization: Bearer sk-or-v1-***
@@ -118,19 +114,23 @@ Authorization: sk-or-v1-***
 
 Без заголовка Authorization запрос будет отклонен с ошибкой 401.
 
-## Параметры инструмента `web_search`
+### Опциональные заголовки
 
-Все поля, кроме `query`, необязательны. Если параметр не указан, используется значение из переменных окружения или дефолт (см. ниже).
+Дополнительные настройки могут быть переданы через заголовки при подключении к серверу:
 
-| Поле           | Тип    | По умолчанию                | Описание                          |
-| -------------- | ------ | --------------------------- | --------------------------------- |
-| `query`        | string | — (обязательное)            | Запрос пользователя               |
-| `httpProxy`    | string | `HTTP_PROXY`                | Прокси для HTTP                   |
-| `httpsProxy`   | string | `HTTPS_PROXY`               | Прокси для HTTPS                  |
-| `model`        | string | `openai/gpt-4o-mini:online` | Модель OpenRouter                 |
-| `pluginId`     | string | `web`                       | Плагин OpenRouter                 |
-| `timeoutMs`    | number | `60000`                     | Таймаут запроса в миллисекундах   |
-| `maxRedirects` | number | `5`                         | Максимальное число редиректов     |
+| Заголовок        | Описание                               | По умолчанию                |
+| ---------------- | -------------------------------------- | --------------------------- |
+| `X-Model`        | Модель OpenRouter для обработки поиска | `openai/gpt-4o-mini:online` |
+| `X-HTTP-Proxy`   | Прокси для HTTP запросов               | не установлен               |
+| `X-HTTPS-Proxy`  | Прокси для HTTPS запросов              | не установлен               |
+
+## Инструмент `web_search`
+
+Инструмент принимает только один обязательный параметр:
+
+| Параметр | Тип    | Описание                               |
+| -------- | ------ | -------------------------------------- |
+| `query`  | string | Поисковый запрос для выполнения в веб  |
 
 ### Пример вызова инструмента
 
@@ -138,13 +138,9 @@ Authorization: sk-or-v1-***
 {
   "name": "web_search",
   "arguments": {
-    "query": "latest news about Model Context Protocol",
-    "httpsProxy": "http://proxy.example:3128",
-    "timeoutMs": 30000
+    "query": "latest news about Model Context Protocol"
   }
 }
 ```
 
-**Важно:** API ключ OpenRouter передается через заголовок `Authorization`, а не как параметр инструмента.
-
-При отсутствии прокси в аргументах, будут использованы переменные окружения `HTTP_PROXY` / `HTTPS_PROXY`.
+**Важно:** Все настройки (API ключ, модель, прокси) передаются через заголовки при подключении к MCP серверу, а не как параметры инструмента.
