@@ -2,22 +2,98 @@
 
 Сервер MCP предоставляет инструмент `web_search`, выполняющий запросы к [OpenRouter Web](https://openrouter.ai).
 
+Сервер работает по протоколу **SSE (Server-Sent Events)** через HTTP.
+
 ## Запуск
 
-```jsonc
-{
-  "mcpServers": {
-    "web-search": {
-      "command": "node",
-      "args": ["./src/index.js"],
-      "env": {
-        "OPENROUTER_API_KEY": "sk-or-v1-***",
-        "HTTPS_PROXY": "http://proxy.example:3128"
-      }
-    }
-  }
-}
-```
+### Через Docker (рекомендуется)
+
+1. Соберите образ:
+
+   ```bash
+   docker build -t openrouter-web-search-mcp .
+   ```
+
+2. Запустите контейнер:
+
+   ```bash
+   docker run -d \
+     -p 60125:80 \
+     -e HTTP_PROXY="http://5.129.238.212:5559" \
+     --restart=always \
+     --name openrouter-web-search-mcp \
+     openrouter-web-search:latest
+   ```
+
+3. Проверьте работоспособность:
+
+   ```bash
+   curl http://localhost:60125/health
+   ```
+
+   Ожидаемый ответ: `{"status":"ok"}`
+
+4. Настройте MCP клиент для подключения к SSE серверу:
+
+   ```jsonc
+   {
+     "mcpServers": {
+       "web-search": {
+         "url": "http://localhost:60125/mcp",
+         "env": {
+           "OPENROUTER_API_KEY": "sk-or-v1-***"
+         }
+       }
+     }
+   }
+   ```
+
+### Локальный запуск
+
+1. Установите зависимости:
+
+   ```bash
+   npm install
+   ```
+
+2. Запустите сервер:
+
+   ```bash
+   OPENROUTER_API_KEY="sk-or-v1-***" \
+   HTTP_PROXY="http://proxy.example:3128" \
+   node src/index.js
+   ```
+
+3. Сервер будет доступен по адресу `http://localhost:80/mcp`
+
+### Тестирование
+
+Проект использует [Vitest](https://vitest.dev/) для unit-тестирования.
+
+1. Запуск всех тестов:
+
+   ```bash
+   npm test
+   ```
+
+2. Запуск тестов в watch режиме (автоматически перезапускаются при изменении файлов):
+
+   ```bash
+   npm run test:watch
+   ```
+
+Тесты покрывают следующие модули:
+
+- [`src/config/server.js`](src/config/server.js) - конфигурация сервера
+- [`src/config/openrouter.js`](src/config/openrouter.js) - конфигурация OpenRouter API (создание payload и request config)
+- [`src/services/openrouterClient.js`](src/services/openrouterClient.js) - клиент для работы с OpenRouter API
+- [`src/tools/webSearch.js`](src/tools/webSearch.js) - инструмент web_search и его валидация
+
+### Endpoints
+
+- `GET /mcp` - MCP endpoint для подключения клиентов
+- `POST /mcp` - Endpoint для отправки сообщений
+- `GET /health` - Health check endpoint
 
 ## Переменные окружения (используются по умолчанию)
 

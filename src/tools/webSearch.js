@@ -20,8 +20,7 @@ export const webSearchMetadata = {
   title: "Web Search",
   description:
     "Perform a web search via OpenRouter's web plugin. Supports per-request overrides for API key, proxy, and transport options.",
-  inputSchema: webSearchInputSchema,
-  outputSchema: z.object({ result: z.string() }),
+  inputSchema: webSearchInputSchema.shape,
 };
 
 export function registerWebSearchTool(server) {
