@@ -1,0 +1,15 @@
+{
+  "name": "openrouter-web-search-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.20.2",
+    "zod": "4.1.12",
+    "axios": "1.13.1",
+    "https-proxy-agent": "7.0.6",
+    "http-proxy-agent": "7.0.2"
+  }
+}
